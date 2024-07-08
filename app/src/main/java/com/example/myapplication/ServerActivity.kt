@@ -1,5 +1,7 @@
 package com.example.myapplication
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -86,14 +88,10 @@ class ServerActivity : AppCompatActivity() {
                 }
 
                 val byteArray = outputStream.toByteArray()
-                val message = String(byteArray)
+                val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 
                 runOnUiThread {
-                    if (message == "HOOOOOOOOOLAAAAAAAAAAA") {
-                        binding.serverInfoTextView.text = "Message from client: $message"
-                    } else {
-                        // Aquí puedes procesar otros tipos de datos recibidos desde el cliente
-                    }
+                    binding.receivedImageView.setImageBitmap(bitmap)
                 }
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Error handling client", e)

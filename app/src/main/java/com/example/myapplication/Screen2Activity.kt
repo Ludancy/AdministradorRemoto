@@ -68,7 +68,7 @@ class Screen2Activity : AppCompatActivity() {
     private fun startClient() {
         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
 
-        // Start the ScreenCaptureService as a foreground service
+        // Inicia el servicio ScreenCaptureService como un servicio en primer plano
         val serviceIntent = Intent(this, ScreenCaptureService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent)
@@ -106,7 +106,7 @@ class Screen2Activity : AppCompatActivity() {
                 mediaProjection?.let {
                     val screenshot = captureScreen()
                     if (screenshot != null) {
-                        updateScreen(screenshot)
+                        // Comprime el bitmap en un array de bytes
                         val byteArrayOutputStream = ByteArrayOutputStream()
                         screenshot.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
                         val byteArray = byteArrayOutputStream.toByteArray()
@@ -114,11 +114,11 @@ class Screen2Activity : AppCompatActivity() {
                         // Enviar datos al servidor
                         sendBytesToIp(SERVER_IP, SERVER_PORT, byteArray)
 
-                        // Mostrar la IP y el puerto en la interfaz de usuario
+                        // Actualizar la interfaz de usuario con información del servidor
                         updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
                     }
                 }
-                delay(100) // Ajusta el delay según sea necesario para controlar la frecuencia de fotogramas
+                delay(100) // Ajusta el delay según sea necesario para controlar la frecuencia de envío
             }
         }
     }
@@ -137,12 +137,6 @@ class Screen2Activity : AppCompatActivity() {
         bitmap.copyPixelsFromBuffer(buffer)
         image.close()
         return bitmap
-    }
-
-    private fun updateScreen(bitmap: Bitmap) {
-        runOnUiThread {
-            binding.receivedImage.setImageBitmap(bitmap)
-        }
     }
 
     private fun sendBytesToIp(ip: String, port: Int, data: ByteArray) {
@@ -171,7 +165,7 @@ class Screen2Activity : AppCompatActivity() {
                 updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
             } catch (e: IOException) {
                 Log.e(TAG, "Failed to send message to server", e)
-                // Aquí podrías mostrar un mensaje de error en caso de fallo
+                // Manejar el error si falla el envío
             }
         }
     }
