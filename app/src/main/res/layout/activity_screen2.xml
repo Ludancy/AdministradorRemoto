@@ -1,52 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".Screen2Activity">
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <TextView
-        android:id="@+id/welcome_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Bienvenido a la Pantalla 2"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"/>
+    <data>
+        <!-- Data binding variables -->
+    </data>
 
-    <TextView
-        android:id="@+id/connection_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Not Connected"
-        android:layout_below="@id/welcome_text"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"/>
-
-    <Button
-        android:id="@+id/send_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Iniciar Captura de Pantalla"
-        android:layout_below="@id/connection_status"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"/>
-
-    <TextView
-        android:id="@+id/received_message"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Mensaje Recibido: "
-        android:layout_below="@id/send_button"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"/>
-
-    <ImageView
-        android:id="@+id/received_image"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/received_message"
-        android:contentDescription="Imagen Recibida"
-        android:layout_marginTop="16dp"/>
-</RelativeLayout>
+        android:layout_height="match_parent">
+        <!-- TextView para mostrar la información del servidor -->
+        <TextView
+            android:id="@+id/serverInfoTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/receivedImage"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/black"
+            android:textSize="16sp" />
+        <Button
+            android:id="@+id/startServerButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start Server" />
+
+        <Button
+            android:id="@+id/startClientButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/startServerButton"
+            android:text="Start Client" />
+
+        <Button
+            android:id="@+id/sendMessageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/startClientButton"
+            android:text="Send Message" />
+
+        <ImageView
+            android:id="@+id/receivedImage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/sendMessageButton" />
+
+
+
+    </RelativeLayout>
+</layout>

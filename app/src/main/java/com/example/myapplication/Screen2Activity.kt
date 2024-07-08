@@ -11,16 +11,16 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.NotificationCompat
 import com.example.myapplication.databinding.ActivityScreen2Binding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
-import java.io.OutputStream
+import java.io.IOException
 import java.net.Socket
 import java.nio.ByteBuffer
 
@@ -34,7 +34,11 @@ class Screen2Activity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_CODE_CAPTURE = 1001
+        private const val TAG = "Screen2Activity"
+        private const val SERVER_PORT = 5000
+        private const val SERVER_IP = "192.168.0.104" // Reemplaza con la IP del servidor
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityScreen2Binding.inflate(layoutInflater)
@@ -43,15 +47,28 @@ class Screen2Activity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        binding.sendButton.setOnClickListener {
-            startScreenCapture()
+        binding.startServerButton.setOnClickListener {
+            startServer()
+        }
+
+        binding.startClientButton.setOnClickListener {
+            startClient()
+        }
+
+        binding.sendMessageButton.setOnClickListener {
+            sendMessageToServer("HOOOOOOOOOLAAAAAAAAAAA")
         }
     }
 
-    private fun startScreenCapture() {
+    private fun startServer() {
+        val intent = Intent(this, ServerActivity::class.java)
+        startActivity(intent)
+    }
+
+    private fun startClient() {
         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
 
-        // Start the ScreenCaptureService before starting the screen capture
+        // Start the ScreenCaptureService as a foreground service
         val serviceIntent = Intent(this, ScreenCaptureService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent)
@@ -94,10 +111,14 @@ class Screen2Activity : AppCompatActivity() {
                         screenshot.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
                         val byteArray = byteArrayOutputStream.toByteArray()
 
-                        sendBytesToIp("192.168.0.105", 8080, byteArray) // Replace with your IP and port
+                        // Enviar datos al servidor
+                        sendBytesToIp(SERVER_IP, SERVER_PORT, byteArray)
+
+                        // Mostrar la IP y el puerto en la interfaz de usuario
+                        updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
                     }
                 }
-                delay(100) // Adjust delay as needed to control frame rate
+                delay(100) // Ajusta el delay según sea necesario para controlar la frecuencia de fotogramas
             }
         }
     }
@@ -124,28 +145,41 @@ class Screen2Activity : AppCompatActivity() {
         }
     }
 
-    private fun sendBytesToIp(ip: String, port: Int, byteArray: ByteArray) {
+    private fun sendBytesToIp(ip: String, port: Int, data: ByteArray) {
         try {
-            val socket = Socket(ip, port)
-            val output: OutputStream = socket.getOutputStream()
-            output.write(byteArray)
-            output.flush()
-            socket.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
+            Socket(ip, port).use { socket ->
+                socket.getOutputStream().use { outputStream ->
+                    outputStream.write(data)
+                    outputStream.flush()
+                }
+            }
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to send bytes to IP $ip on port $port", e)
         }
     }
 
-    private fun testConnection() {
+    private fun sendMessageToServer(message: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val socket = Socket("192.168.0.105", 8080)
-                socket.close()
-                println("Connection successful")
-            } catch (e: Exception) {
-                e.printStackTrace()
+                Socket(SERVER_IP, SERVER_PORT).use { socket ->
+                    socket.getOutputStream().use { outputStream ->
+                        outputStream.write(message.toByteArray())
+                        outputStream.flush()
+                    }
+                }
+                // Solo actualizar la UI si el envío fue exitoso
+                updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to send message to server", e)
+                // Aquí podrías mostrar un mensaje de error en caso de fallo
             }
         }
+    }
 
+    private fun updateUiWithServerInfo(ip: String, port: Int) {
+        runOnUiThread {
+            binding.serverInfoTextView.text = "Enviando a IP: $ip, Puerto: $port"
+            Log.d(TAG, "Actualizando UI con información del servidor - IP: $ip, Puerto: $port")
         }
+    }
 }
