@@ -8,6 +8,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
         <!-- TextView para mostrar la información del servidor -->
         <TextView
             android:id="@+id/serverInfoTextView"
@@ -17,12 +18,15 @@
             android:layout_marginTop="16dp"
             android:textColor="@android:color/black"
             android:textSize="16sp" />
+
+        <!-- Botón para iniciar el servidor -->
         <Button
             android:id="@+id/startServerButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Start Server" />
 
+        <!-- Botón para iniciar el cliente -->
         <Button
             android:id="@+id/startClientButton"
             android:layout_width="wrap_content"
@@ -30,6 +34,7 @@
             android:layout_below="@id/startServerButton"
             android:text="Start Client" />
 
+        <!-- Botón para enviar un mensaje -->
         <Button
             android:id="@+id/sendMessageButton"
             android:layout_width="wrap_content"
@@ -37,13 +42,22 @@
             android:layout_below="@id/startClientButton"
             android:text="Send Message" />
 
+        <!-- ImageView para mostrar la imagen recibida -->
         <ImageView
             android:id="@+id/receivedImage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/sendMessageButton" />
 
-
+        <!-- TextView para mostrar los datos del cliente -->
+        <TextView
+            android:id="@+id/clientDataTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/serverInfoTextView"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/black"
+            android:textSize="16sp" />
 
     </RelativeLayout>
 </layout>

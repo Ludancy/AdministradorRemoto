@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication.databinding.ActivityScreen2Binding
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +34,7 @@ class Screen2Activity : AppCompatActivity() {
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private lateinit var imageReader: ImageReader
+    private val viewModel: Screen2ViewModel by viewModels()
 
     companion object {
         private const val REQUEST_CODE_CAPTURE = 1001
@@ -59,6 +61,12 @@ class Screen2Activity : AppCompatActivity() {
 
         binding.sendMessageButton.setOnClickListener {
             sendMessageToServer("HOOOOOOOOOLAAAAAAAAAAA")
+        }
+
+        // Recuperar datos del ViewModel
+        viewModel.clientData.observe(this) { data ->
+            // Actualizar la UI con los datos del cliente
+            binding.clientDataTextView.text = data
         }
     }
 
@@ -165,11 +173,13 @@ class Screen2Activity : AppCompatActivity() {
     private fun getLocalIpAddress(): String {
         val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         val ipAddress = wifiManager.connectionInfo.ipAddress
-        return String.format("%d.%d.%d.%d",
+        return String.format(
+            "%d.%d.%d.%d",
             ipAddress and 0xff,
             ipAddress shr 8 and 0xff,
             ipAddress shr 16 and 0xff,
-            ipAddress shr 24 and 0xff)
+            ipAddress shr 24 and 0xff
+        )
     }
 
     private fun sendMessageToServer(message: String) {

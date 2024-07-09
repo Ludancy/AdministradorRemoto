@@ -10,7 +10,8 @@ material = "1.12.0"
 constraintlayout = "2.1.4"
 navigationFragmentKtx = "2.7.7"
 navigationUiKtx = "2.7.7"
-jmdns = "3.5.5"  # Agregar versión de JmDNS
+jmdns = "3.5.5"
+preferenceKtx = "1.2.1"  # Agregar versión de JmDNS
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -22,7 +23,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
-jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmdns" }  # Agregar dependencia de JmDNS
+jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmdns" }
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preferenceKtx" }  # Agregar dependencia de JmDNS
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

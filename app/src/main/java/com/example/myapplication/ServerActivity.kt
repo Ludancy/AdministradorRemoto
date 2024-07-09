@@ -2,8 +2,10 @@ package com.example.myapplication
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication.databinding.ActivityServerBinding
 import kotlinx.coroutines.CoroutineScope
@@ -22,16 +24,40 @@ class ServerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityServerBinding
     private val serverPort = 5000
+    private var serverSocket: ServerSocket? = null
+    private lateinit var serverThread: Thread
     private lateinit var jmdns: JmDNS
+    private val viewModel: Screen2ViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        displayServerInfo()
-        startServer()
-        advertiseService()
+        if (savedInstanceState == null) {
+            displayServerInfo()
+            startServer()
+            advertiseService()
+        } else {
+            // Restaurar el estado de la UI
+            binding.serverInfoTextView.text = savedInstanceState.getString("serverInfo")
+            val bitmap = savedInstanceState.getParcelable<Bitmap>("receivedImage")
+            binding.receivedImageView.setImageBitmap(bitmap)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("serverInfo", binding.serverInfoTextView.text.toString())
+        val bitmap = (binding.receivedImageView.drawable as BitmapDrawable?)?.bitmap
+        if (bitmap != null) {
+            outState.putParcelable("receivedImage", bitmap)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopServer()
     }
 
     private fun displayServerInfo() {
@@ -64,54 +90,64 @@ class ServerActivity : AppCompatActivity() {
     }
 
     private fun startServer() {
-        CoroutineScope(Dispatchers.IO).launch {
+        serverThread = Thread {
             try {
-                val serverSocket = ServerSocket(serverPort)
-                while (true) {
-                    val clientSocket = serverSocket.accept()
+                serverSocket = ServerSocket(serverPort)
+                while (!serverThread.isInterrupted) {
+                    val clientSocket = serverSocket?.accept()
                     handleClient(clientSocket)
                 }
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Server error", e)
             }
         }
+        serverThread.start()
     }
 
-    private fun handleClient(socket: Socket) {
+    private fun stopServer() {
+        try {
+            serverSocket?.close()
+            serverThread.interrupt()
+        } catch (e: IOException) {
+            Log.e("ServerActivity", "Error closing server", e)
+        }
+    }
+
+    private fun handleClient(socket: Socket?) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                socket.getInputStream().use { inputStream ->
-                    // Leer la IP del cliente
-                    val clientIpBuffer = ByteArray(1024)
-                    val clientIpLength = inputStream.read(clientIpBuffer)
-                    val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
+            socket?.use {
+                try {
+                    it.getInputStream().use { inputStream ->
+                        // Leer la IP del cliente
+                        val clientIpBuffer = ByteArray(1024)
+                        val clientIpLength = inputStream.read(clientIpBuffer)
+                        val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
 
-                    // Leer los datos de la imagen
-                    val byteArrayOutputStream = ByteArrayOutputStream()
-                    val buffer = ByteArray(1024)
-                    var bytesRead: Int
+                        // Leer los datos de la imagen
+                        val byteArrayOutputStream = ByteArrayOutputStream()
+                        val buffer = ByteArray(1024)
+                        var bytesRead: Int
 
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        byteArrayOutputStream.write(buffer, 0, bytesRead)
-                    }
-
-                    val byteArray = byteArrayOutputStream.toByteArray()
-                    val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-
-                    // Mostrar la imagen en la interfaz de usuario
-                    if (bitmap != null) {
-                        runOnUiThread {
-                            binding.receivedImageView.setImageBitmap(bitmap)
+                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            byteArrayOutputStream.write(buffer, 0, bytesRead)
                         }
-                    }
 
-                    // Mostrar la IP del cliente en la interfaz de usuario
-                    runOnUiThread {
-                        binding.clientInfoTextView.text = "Conectado a IP del cliente: $clientIp"
+                        val byteArray = byteArrayOutputStream.toByteArray()
+                        val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+                        // Mostrar la imagen en la interfaz de usuario
+                        if (bitmap != null) {
+                            runOnUiThread {
+                                binding.receivedImageView.setImageBitmap(bitmap)
+                            }
+                        }
+
+                        // Actualizar el ViewModel con la IP del cliente
+                        viewModel.clientData.postValue("Conectado a IP del cliente: $clientIp")
                     }
+                } catch (e: IOException) {
+                    Log.e("ServerActivity", "Client handling error", e)
                 }
-            } catch (e: IOException) {
-                Log.e("ServerActivity", "Client handling error", e)
             }
         }
     }
