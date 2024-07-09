@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -8,6 +9,7 @@ import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
@@ -35,8 +37,8 @@ class Screen2Activity : AppCompatActivity() {
     companion object {
         private const val REQUEST_CODE_CAPTURE = 1001
         private const val TAG = "Screen2Activity"
+        private const val SERVER_IP = "192.168.136.131"
         private const val SERVER_PORT = 5000
-        private const val SERVER_IP = "192.168.0.104" // Reemplaza con la IP del servidor
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -143,6 +145,13 @@ class Screen2Activity : AppCompatActivity() {
         try {
             Socket(ip, port).use { socket ->
                 socket.getOutputStream().use { outputStream ->
+                    // Obtener la IP local del cliente
+                    val clientIp = getLocalIpAddress()
+                    if (clientIp != null) {
+                        // Enviar la IP del cliente primero
+                        outputStream.write((clientIp + "\n").toByteArray())
+                    }
+                    // Enviar los datos de la imagen
                     outputStream.write(data)
                     outputStream.flush()
                 }
@@ -150,6 +159,17 @@ class Screen2Activity : AppCompatActivity() {
         } catch (e: IOException) {
             Log.e(TAG, "Failed to send bytes to IP $ip on port $port", e)
         }
+    }
+
+    @SuppressLint("ServiceCast")
+    private fun getLocalIpAddress(): String {
+        val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+        val ipAddress = wifiManager.connectionInfo.ipAddress
+        return String.format("%d.%d.%d.%d",
+            ipAddress and 0xff,
+            ipAddress shr 8 and 0xff,
+            ipAddress shr 16 and 0xff,
+            ipAddress shr 24 and 0xff)
     }
 
     private fun sendMessageToServer(message: String) {

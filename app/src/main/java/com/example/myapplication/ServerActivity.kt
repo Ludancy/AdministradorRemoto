@@ -15,11 +15,14 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
+import javax.jmdns.JmDNS
+import javax.jmdns.ServiceInfo
 
 class ServerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityServerBinding
     private val serverPort = 5000
+    private lateinit var jmdns: JmDNS
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +31,7 @@ class ServerActivity : AppCompatActivity() {
 
         displayServerInfo()
         startServer()
+        advertiseService()
     }
 
     private fun displayServerInfo() {
@@ -53,8 +57,8 @@ class ServerActivity : AppCompatActivity() {
                     }
                 }
             }
-        } catch (ex: Exception) {
-            Log.e("ServerActivity", "Error getting IP address", ex)
+        } catch (e: Exception) {
+            Log.e("ServerActivity", "Failed to get local IP address", e)
         }
         return null
     }
@@ -62,15 +66,13 @@ class ServerActivity : AppCompatActivity() {
     private fun startServer() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                ServerSocket(serverPort).use { serverSocket ->
-                    Log.d("ServerActivity", "Server started, waiting for connections...")
-                    while (true) {
-                        val clientSocket = serverSocket.accept()
-                        handleClient(clientSocket)
-                    }
+                val serverSocket = ServerSocket(serverPort)
+                while (true) {
+                    val clientSocket = serverSocket.accept()
+                    handleClient(clientSocket)
                 }
             } catch (e: IOException) {
-                Log.e("ServerActivity", "Error starting server", e)
+                Log.e("ServerActivity", "Server error", e)
             }
         }
     }
@@ -78,25 +80,53 @@ class ServerActivity : AppCompatActivity() {
     private fun handleClient(socket: Socket) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val inputStream = socket.getInputStream()
-                val outputStream = ByteArrayOutputStream()
-                val buffer = ByteArray(1024)
-                var bytesRead: Int
+                socket.getInputStream().use { inputStream ->
+                    // Leer la IP del cliente
+                    val clientIpBuffer = ByteArray(1024)
+                    val clientIpLength = inputStream.read(clientIpBuffer)
+                    val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
 
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                }
+                    // Leer los datos de la imagen
+                    val byteArrayOutputStream = ByteArrayOutputStream()
+                    val buffer = ByteArray(1024)
+                    var bytesRead: Int
 
-                val byteArray = outputStream.toByteArray()
-                val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        byteArrayOutputStream.write(buffer, 0, bytesRead)
+                    }
 
-                runOnUiThread {
-                    binding.receivedImageView.setImageBitmap(bitmap)
+                    val byteArray = byteArrayOutputStream.toByteArray()
+                    val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+                    // Mostrar la imagen en la interfaz de usuario
+                    if (bitmap != null) {
+                        runOnUiThread {
+                            binding.receivedImageView.setImageBitmap(bitmap)
+                        }
+                    }
+
+                    // Mostrar la IP del cliente en la interfaz de usuario
+                    runOnUiThread {
+                        binding.clientInfoTextView.text = "Conectado a IP del cliente: $clientIp"
+                    }
                 }
             } catch (e: IOException) {
-                Log.e("ServerActivity", "Error handling client", e)
-            } finally {
-                socket.close()
+                Log.e("ServerActivity", "Client handling error", e)
+            }
+        }
+    }
+
+    private fun advertiseService() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val serviceType = "_http._tcp.local."
+                val serviceName = "ScreenCaptureServer"
+                val serviceInfo = ServiceInfo.create(serviceType, serviceName, serverPort, "Screen Capture Server")
+                jmdns = JmDNS.create()
+                jmdns.registerService(serviceInfo)
+                Log.d("ServerActivity", "Service advertised: $serviceName")
+            } catch (e: IOException) {
+                Log.e("ServerActivity", "Failed to advertise service", e)
             }
         }
     }
