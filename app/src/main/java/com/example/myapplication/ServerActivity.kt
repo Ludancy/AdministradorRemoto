@@ -39,7 +39,7 @@ class ServerActivity : AppCompatActivity() {
             startServer()
             advertiseService()
         } else {
-            // Restaurar el estado de la UI
+            // Restore UI state
             binding.serverInfoTextView.text = savedInstanceState.getString("serverInfo")
             val bitmap = savedInstanceState.getParcelable<Bitmap>("receivedImage")
             binding.receivedImageView.setImageBitmap(bitmap)
@@ -95,7 +95,10 @@ class ServerActivity : AppCompatActivity() {
                 serverSocket = ServerSocket(serverPort)
                 while (!serverThread.isInterrupted) {
                     val clientSocket = serverSocket?.accept()
-                    handleClient(clientSocket)
+                    Log.d("ServerActivity", "Client connected: ${clientSocket?.inetAddress}")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        handleClient(clientSocket)
+                    }
                 }
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Server error", e)
@@ -114,40 +117,38 @@ class ServerActivity : AppCompatActivity() {
     }
 
     private fun handleClient(socket: Socket?) {
-        CoroutineScope(Dispatchers.IO).launch {
-            socket?.use {
-                try {
-                    it.getInputStream().use { inputStream ->
-                        // Leer la IP del cliente
-                        val clientIpBuffer = ByteArray(1024)
-                        val clientIpLength = inputStream.read(clientIpBuffer)
-                        val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
+        socket?.use {
+            try {
+                it.getInputStream().use { inputStream ->
+                    // Read client IP
+                    val clientIpBuffer = ByteArray(1024)
+                    val clientIpLength = inputStream.read(clientIpBuffer)
+                    val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
 
-                        // Leer los datos de la imagen
-                        val byteArrayOutputStream = ByteArrayOutputStream()
-                        val buffer = ByteArray(1024)
-                        var bytesRead: Int
+                    // Read image data
+                    val byteArrayOutputStream = ByteArrayOutputStream()
+                    val buffer = ByteArray(1024)
+                    var bytesRead: Int
 
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            byteArrayOutputStream.write(buffer, 0, bytesRead)
-                        }
-
-                        val byteArray = byteArrayOutputStream.toByteArray()
-                        val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-
-                        // Mostrar la imagen en la interfaz de usuario
-                        if (bitmap != null) {
-                            runOnUiThread {
-                                binding.receivedImageView.setImageBitmap(bitmap)
-                            }
-                        }
-
-                        // Actualizar el ViewModel con la IP del cliente
-                        viewModel.clientData.postValue("Conectado a IP del cliente: $clientIp")
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        byteArrayOutputStream.write(buffer, 0, bytesRead)
                     }
-                } catch (e: IOException) {
-                    Log.e("ServerActivity", "Client handling error", e)
+
+                    val byteArray = byteArrayOutputStream.toByteArray()
+                    val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+                    // Display image on UI
+                    if (bitmap != null) {
+                        runOnUiThread {
+                            binding.receivedImageView.setImageBitmap(bitmap)
+                        }
+                    }
+
+                    // Update ViewModel with client IP
+                    viewModel.clientData.postValue("Connected to client IP: $clientIp")
                 }
+            } catch (e: IOException) {
+                Log.e("ServerActivity", "Client handling error", e)
             }
         }
     }
@@ -155,14 +156,12 @@ class ServerActivity : AppCompatActivity() {
     private fun advertiseService() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val serviceType = "_http._tcp.local."
-                val serviceName = "ScreenCaptureServer"
-                val serviceInfo = ServiceInfo.create(serviceType, serviceName, serverPort, "Screen Capture Server")
                 jmdns = JmDNS.create()
+                val serviceInfo = ServiceInfo.create("_http._tcp.local.", "ScreenServer", serverPort, "Screen Sharing Server")
                 jmdns.registerService(serviceInfo)
-                Log.d("ServerActivity", "Service advertised: $serviceName")
+                Log.d("ServerActivity", "Service advertised: ScreenServer")
             } catch (e: IOException) {
-                Log.e("ServerActivity", "Failed to advertise service", e)
+                Log.e("ServerActivity", "Error advertising service", e)
             }
         }
     }

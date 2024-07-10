@@ -43,6 +43,8 @@ class Screen2Activity : AppCompatActivity() {
         private const val SERVER_PORT = 5000
     }
 
+    private lateinit var metrics: DisplayMetrics
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityScreen2Binding.inflate(layoutInflater)
@@ -50,6 +52,9 @@ class Screen2Activity : AppCompatActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+
+        metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(metrics)
 
         binding.startServerButton.setOnClickListener {
             startServer()
@@ -63,9 +68,9 @@ class Screen2Activity : AppCompatActivity() {
             sendMessageToServer("HOOOOOOOOOLAAAAAAAAAAA")
         }
 
-        // Recuperar datos del ViewModel
+        // Observe ViewModel data
         viewModel.clientData.observe(this) { data ->
-            // Actualizar la UI con los datos del cliente
+            // Update UI with client data
             binding.clientDataTextView.text = data
         }
     }
@@ -78,7 +83,7 @@ class Screen2Activity : AppCompatActivity() {
     private fun startClient() {
         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
 
-        // Inicia el servicio ScreenCaptureService como un servicio en primer plano
+        // Start ScreenCaptureService as a foreground service
         val serviceIntent = Intent(this, ScreenCaptureService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent)
@@ -100,8 +105,6 @@ class Screen2Activity : AppCompatActivity() {
     }
 
     private fun setupVirtualDisplay() {
-        val metrics = DisplayMetrics()
-        windowManager.defaultDisplay.getMetrics(metrics)
         imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
 
         virtualDisplay = mediaProjection?.createVirtualDisplay(
@@ -116,57 +119,41 @@ class Screen2Activity : AppCompatActivity() {
                 mediaProjection?.let {
                     val screenshot = captureScreen()
                     if (screenshot != null) {
-                        // Comprime el bitmap en un array de bytes
+                        // Compress bitmap into byte array
                         val byteArrayOutputStream = ByteArrayOutputStream()
                         screenshot.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
                         val byteArray = byteArrayOutputStream.toByteArray()
 
-                        // Enviar datos al servidor
+                        // Send data to server
                         sendBytesToIp(SERVER_IP, SERVER_PORT, byteArray)
 
-                        // Actualizar la interfaz de usuario con información del servidor
+                        // Update UI with server info
                         updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
                     }
                 }
-                delay(100) // Ajusta el delay según sea necesario para controlar la frecuencia de envío
+                delay(100) // Adjust delay as needed to control sending frequency
             }
         }
     }
 
     private fun captureScreen(): Bitmap? {
-        val image = imageReader.acquireLatestImage() ?: return null
-        val planes = image.planes
-        val buffer: ByteBuffer = planes[0].buffer
-        val width = image.width
-        val height = image.height
-        val pixelStride = planes[0].pixelStride
-        val rowStride = planes[0].rowStride
-        val rowPadding = rowStride - pixelStride * width
+        val image = imageReader.acquireLatestImage()
+        if (image != null) {
+            val planes = image.planes
+            val buffer = planes[0].buffer
+            val pixelStride = planes[0].pixelStride
+            val rowStride = planes[0].rowStride
+            val rowPadding = rowStride - pixelStride * metrics.widthPixels
 
-        val bitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
-        bitmap.copyPixelsFromBuffer(buffer)
-        image.close()
-        return bitmap
-    }
-
-    private fun sendBytesToIp(ip: String, port: Int, data: ByteArray) {
-        try {
-            Socket(ip, port).use { socket ->
-                socket.getOutputStream().use { outputStream ->
-                    // Obtener la IP local del cliente
-                    val clientIp = getLocalIpAddress()
-                    if (clientIp != null) {
-                        // Enviar la IP del cliente primero
-                        outputStream.write((clientIp + "\n").toByteArray())
-                    }
-                    // Enviar los datos de la imagen
-                    outputStream.write(data)
-                    outputStream.flush()
-                }
-            }
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to send bytes to IP $ip on port $port", e)
+            val bitmap = Bitmap.createBitmap(
+                metrics.widthPixels + rowPadding / pixelStride,
+                metrics.heightPixels, Bitmap.Config.ARGB_8888
+            )
+            bitmap.copyPixelsFromBuffer(buffer)
+            image.close()
+            return bitmap
         }
+        return null
     }
 
     @SuppressLint("ServiceCast")
@@ -182,28 +169,50 @@ class Screen2Activity : AppCompatActivity() {
         )
     }
 
-    private fun sendMessageToServer(message: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                Socket(SERVER_IP, SERVER_PORT).use { socket ->
-                    socket.getOutputStream().use { outputStream ->
-                        outputStream.write(message.toByteArray())
-                        outputStream.flush()
+    private fun sendBytesToIp(ip: String, port: Int, data: ByteArray) {
+        try {
+            Socket(ip, port).use { socket ->
+                socket.getOutputStream().use { outputStream ->
+                    // Get client's local IP
+                    val clientIp = getLocalIpAddress()
+                    if (clientIp != null) {
+                        // Send client's IP first
+                        outputStream.write((clientIp + "\n").toByteArray())
                     }
+                    // Send image data
+                    outputStream.write(data)
+                    outputStream.flush()
                 }
-                // Solo actualizar la UI si el envío fue exitoso
-                updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
-            } catch (e: IOException) {
-                Log.e(TAG, "Failed to send message to server", e)
-                // Manejar el error si falla el envío
             }
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to send bytes to IP $ip on port $port", e)
         }
     }
 
     private fun updateUiWithServerInfo(ip: String, port: Int) {
         runOnUiThread {
-            binding.serverInfoTextView.text = "Enviando a IP: $ip, Puerto: $port"
-            Log.d(TAG, "Actualizando UI con información del servidor - IP: $ip, Puerto: $port")
+            binding.serverInfoTextView.text = "Sending data to server IP: $ip, Port: $port"
         }
+    }
+
+    private fun sendMessageToServer(message: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val socket = Socket(SERVER_IP, SERVER_PORT)
+                val outputStream = socket.getOutputStream()
+                outputStream.write(message.toByteArray())
+                outputStream.flush()
+                socket.close()
+            } catch (e: IOException) {
+                Log.e(TAG, "Error sending message", e)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaProjection?.stop()
+        virtualDisplay?.release()
+        imageReader.close()
     }
 }
