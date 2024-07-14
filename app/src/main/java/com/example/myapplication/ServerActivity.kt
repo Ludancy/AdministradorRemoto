@@ -29,6 +29,8 @@ class ServerActivity : AppCompatActivity() {
     private lateinit var jmdns: JmDNS
     private val viewModel: Screen2ViewModel by viewModels()
 
+    private val clientImages = mutableMapOf<String, Bitmap>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityServerBinding.inflate(layoutInflater)
@@ -41,17 +43,23 @@ class ServerActivity : AppCompatActivity() {
         } else {
             // Restore UI state
             binding.serverInfoTextView.text = savedInstanceState.getString("serverInfo")
-            val bitmap = savedInstanceState.getParcelable<Bitmap>("receivedImage")
-            binding.receivedImageView.setImageBitmap(bitmap)
+            savedInstanceState.getParcelable<Bitmap>("client1Image")?.let {
+                binding.receivedImageView1.setImageBitmap(it)
+            }
+            savedInstanceState.getParcelable<Bitmap>("client2Image")?.let {
+                binding.receivedImageView2.setImageBitmap(it)
+            }
         }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("serverInfo", binding.serverInfoTextView.text.toString())
-        val bitmap = (binding.receivedImageView.drawable as BitmapDrawable?)?.bitmap
-        if (bitmap != null) {
-            outState.putParcelable("receivedImage", bitmap)
+        (binding.receivedImageView1.drawable as BitmapDrawable?)?.bitmap?.let {
+            outState.putParcelable("client1Image", it)
+        }
+        (binding.receivedImageView2.drawable as BitmapDrawable?)?.bitmap?.let {
+            outState.putParcelable("client2Image", it)
         }
     }
 
@@ -125,6 +133,9 @@ class ServerActivity : AppCompatActivity() {
                     val clientIpLength = inputStream.read(clientIpBuffer)
                     val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
 
+                    // Log client IP
+                    Log.d("ServerActivity", "Received connection from client IP: $clientIp")
+
                     // Read image data
                     val byteArrayOutputStream = ByteArrayOutputStream()
                     val buffer = ByteArray(1024)
@@ -137,10 +148,11 @@ class ServerActivity : AppCompatActivity() {
                     val byteArray = byteArrayOutputStream.toByteArray()
                     val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 
-                    // Display image on UI
+                    // Display image on UI and update clientImages map
                     if (bitmap != null) {
+                        clientImages[clientIp] = bitmap
                         runOnUiThread {
-                            binding.receivedImageView.setImageBitmap(bitmap)
+                            updateImageViews()
                         }
                     }
 
@@ -150,6 +162,16 @@ class ServerActivity : AppCompatActivity() {
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Client handling error", e)
             }
+        }
+    }
+
+    private fun updateImageViews() {
+        val clientIps = clientImages.keys.toList()
+        if (clientIps.size > 0) {
+            binding.receivedImageView1.setImageBitmap(clientImages[clientIps[0]])
+        }
+        if (clientIps.size > 1) {
+            binding.receivedImageView2.setImageBitmap(clientImages[clientIps[1]])
         }
     }
 
