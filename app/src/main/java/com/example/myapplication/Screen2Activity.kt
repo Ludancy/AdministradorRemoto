@@ -39,7 +39,7 @@ class Screen2Activity : AppCompatActivity() {
     companion object {
         private const val REQUEST_CODE_CAPTURE = 1001
         private const val TAG = "Screen2Activity"
-        private const val SERVER_IP = "192.168.136.131"
+        private const val SERVER_IP = "192.168.24.68"
         private const val SERVER_PORT = 5000
     }
 
