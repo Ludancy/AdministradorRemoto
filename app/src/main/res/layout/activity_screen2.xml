@@ -45,28 +45,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <Button
-            android:id="@+id/sendMessageButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Send Message"
-            android:drawableStart="@android:drawable/ic_menu_send"
-            app:layout_constraintTop_toBottomOf="@id/startClientButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-
-        <ImageView
-            android:id="@+id/receivedImage"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_marginTop="16dp"
-            android:contentDescription="@string/received_image"
-            app:layout_constraintTop_toBottomOf="@id/sendMessageButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/clientDataTextView" />
-
         <TextView
             android:id="@+id/clientDataTextView"
             android:layout_width="0dp"
@@ -74,7 +52,6 @@
             android:layout_marginTop="16dp"
             android:textColor="@android:color/black"
             android:textSize="16sp"
-            app:layout_constraintTop_toBottomOf="@id/receivedImage"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
