@@ -66,11 +66,9 @@ class Screen2Activity : AppCompatActivity() {
 
         // Observe ViewModel data
         viewModel.clientData.observe(this) { data ->
-            // Update UI with client data
             binding.clientDataTextView.text = data
         }
     }
-
     private fun startServer() {
         val intent = Intent(this, ServerActivity::class.java)
         startActivity(intent)

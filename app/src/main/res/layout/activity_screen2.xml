@@ -1,63 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
         <!-- Data binding variables -->
     </data>
 
-    <RelativeLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:padding="16dp">
 
-        <!-- TextView para mostrar la información del servidor -->
         <TextView
             android:id="@+id/serverInfoTextView"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_below="@id/receivedImage"
-            android:layout_marginTop="16dp"
             android:textColor="@android:color/black"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="Server Info" />
 
-        <!-- Botón para iniciar el servidor -->
         <Button
             android:id="@+id/startServerButton"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Start Server" />
+            android:layout_marginTop="16dp"
+            android:text="Start Server"
+            android:drawableStart="@android:drawable/ic_media_play"
+            app:layout_constraintTop_toBottomOf="@id/serverInfoTextView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Botón para iniciar el cliente -->
         <Button
             android:id="@+id/startClientButton"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_below="@id/startServerButton"
-            android:text="Start Client" />
+            android:layout_marginTop="16dp"
+            android:text="Start Client"
+            android:drawableStart="@android:drawable/ic_media_play"
+            app:layout_constraintTop_toBottomOf="@id/startServerButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Botón para enviar un mensaje -->
         <Button
             android:id="@+id/sendMessageButton"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_below="@id/startClientButton"
-            android:text="Send Message" />
+            android:layout_marginTop="16dp"
+            android:text="Send Message"
+            android:drawableStart="@android:drawable/ic_menu_send"
+            app:layout_constraintTop_toBottomOf="@id/startClientButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- ImageView para mostrar la imagen recibida -->
         <ImageView
             android:id="@+id/receivedImage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/sendMessageButton" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="16dp"
+            android:contentDescription="@string/received_image"
+            app:layout_constraintTop_toBottomOf="@id/sendMessageButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/clientDataTextView" />
 
-        <!-- TextView para mostrar los datos del cliente -->
         <TextView
             android:id="@+id/clientDataTextView"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_below="@id/serverInfoTextView"
             android:layout_marginTop="16dp"
             android:textColor="@android:color/black"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:layout_constraintTop_toBottomOf="@id/receivedImage"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            tools:text="Client Data" />
 
-    </RelativeLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
