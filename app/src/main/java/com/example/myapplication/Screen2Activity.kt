@@ -64,10 +64,6 @@ class Screen2Activity : AppCompatActivity() {
             startClient()
         }
 
-        binding.sendMessageButton.setOnClickListener {
-            sendMessageToServer("HOOOOOOOOOLAAAAAAAAAAA")
-        }
-
         // Observe ViewModel data
         viewModel.clientData.observe(this) { data ->
             // Update UI with client data
@@ -192,20 +188,6 @@ class Screen2Activity : AppCompatActivity() {
     private fun updateUiWithServerInfo(ip: String, port: Int) {
         runOnUiThread {
             binding.serverInfoTextView.text = "Sending data to server IP: $ip, Port: $port"
-        }
-    }
-
-    private fun sendMessageToServer(message: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val socket = Socket(SERVER_IP, SERVER_PORT)
-                val outputStream = socket.getOutputStream()
-                outputStream.write(message.toByteArray())
-                outputStream.flush()
-                socket.close()
-            } catch (e: IOException) {
-                Log.e(TAG, "Error sending message", e)
-            }
         }
     }
 
