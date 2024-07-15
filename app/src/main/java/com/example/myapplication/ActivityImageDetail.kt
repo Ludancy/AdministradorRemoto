@@ -19,7 +19,7 @@ import java.net.Socket
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceInfo
 
-class ServerActivity : AppCompatActivity() {
+class ActivityImageDetail : AppCompatActivity() {
 
     private lateinit var binding: ActivityImageDetailBinding
     private val serverPort = 5000

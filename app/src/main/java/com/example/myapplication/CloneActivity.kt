@@ -74,7 +74,7 @@ class CloneActivity : AppCompatActivity() {
 
     private fun openCloneActivity() {
         stopServer()
-        val intent = Intent(this, ServerActivity::class.java)
+        val intent = Intent(this, ActivityImageDetail::class.java)
         startActivity(intent)
     }
 
