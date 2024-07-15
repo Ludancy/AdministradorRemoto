@@ -36,6 +36,7 @@
 
         <activity android:name=".ServerActivity" />
         <activity android:name=".ClientActivity" />
+        <activity android:name=".CloneActivity" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

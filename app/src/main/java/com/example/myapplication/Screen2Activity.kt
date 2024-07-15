@@ -70,8 +70,8 @@ class Screen2Activity : AppCompatActivity() {
         }
     }
     private fun startServer() {
-        val intent = Intent(this, ServerActivity::class.java)
-        startActivity(intent)
+        val intent = Intent(this, CloneActivity::class.java)
+        openCloneActivity()
     }
 
     private fun startClient() {
@@ -97,7 +97,10 @@ class Screen2Activity : AppCompatActivity() {
             }
         }
     }
-
+    private fun openCloneActivity() {
+        val intent = Intent(this, CloneActivity::class.java)
+        startActivity(intent)
+    }
     private fun setupVirtualDisplay() {
         imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
 

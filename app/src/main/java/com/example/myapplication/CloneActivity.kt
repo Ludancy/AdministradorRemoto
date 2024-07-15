@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication.databinding.ActivityServerBinding
+import com.example.myapplication.databinding.ActivityCloneBinding
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -19,12 +20,12 @@ import java.net.Socket
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceInfo
 
-class ServerActivity : AppCompatActivity() {
+class CloneActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityServerBinding
+    private lateinit var binding: ActivityCloneBinding
     private val serverPort = 5000
     private var serverSocket: ServerSocket? = null
-    private var serverThread: Thread? = null
+    private lateinit var serverThread: Thread
     private lateinit var jmdns: JmDNS
     private val viewModel: Screen2ViewModel by viewModels()
 
@@ -32,7 +33,7 @@ class ServerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityServerBinding.inflate(layoutInflater)
+        binding = ActivityCloneBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         if (savedInstanceState == null) {
@@ -43,17 +44,8 @@ class ServerActivity : AppCompatActivity() {
             advertiseService()
             Log.d("ServerActivity", "NUUUUUUUUUUUUUUUUUUUL SAVEINSTANCE NULL ENTRASTE")
         } else {
-            // Restore UI state
             Log.d("ServerActivity", "EEEEEEEEEEEEEEEEEEEEEEEELSEEEEEE SAVEINSTANCE  ELSE ENTRASTE")
-
-            savedInstanceState.getByteArray("client1Image")?.let {
-                val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                binding.receivedImageView1.setImageBitmap(bitmap)
-            }
-            savedInstanceState.getByteArray("client2Image")?.let {
-                val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                binding.receivedImageView2.setImageBitmap(bitmap)
-            }
+            restoreImages(savedInstanceState)
         }
 
         binding.receivedImageView1.setOnClickListener {
@@ -65,8 +57,24 @@ class ServerActivity : AppCompatActivity() {
         }
     }
 
+    private fun restoreImages(savedInstanceState: Bundle) {
+        savedInstanceState.getString("client1ImagePath")?.let { path ->
+            openFileInput(path).use {
+                val bitmap = BitmapFactory.decodeStream(it)
+                binding.receivedImageView1.setImageBitmap(bitmap)
+            }
+        }
+        savedInstanceState.getString("client2ImagePath")?.let { path ->
+            openFileInput(path).use {
+                val bitmap = BitmapFactory.decodeStream(it)
+                binding.receivedImageView2.setImageBitmap(bitmap)
+            }
+        }
+    }
+
     private fun openCloneActivity() {
-        val intent = Intent(this, CloneActivity::class.java)
+        stopServer()
+        val intent = Intent(this, ServerActivity::class.java)
         startActivity(intent)
     }
 
@@ -75,17 +83,19 @@ class ServerActivity : AppCompatActivity() {
         outState.putString("serverInfo", binding.serverInfoTextView.text.toString())
 
         (binding.receivedImageView1.drawable as BitmapDrawable?)?.bitmap?.let { bitmap ->
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            outState.putByteArray("client1Image", byteArray)
+            val filename = "client1Image.png"
+            openFileOutput(filename, MODE_PRIVATE).use {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+            outState.putString("client1ImagePath", filename)
         }
 
         (binding.receivedImageView2.drawable as BitmapDrawable?)?.bitmap?.let { bitmap ->
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            outState.putByteArray("client2Image", byteArray)
+            val filename = "client2Image.png"
+            openFileOutput(filename, MODE_PRIVATE).use {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+            outState.putString("client2ImagePath", filename)
         }
     }
 
@@ -151,7 +161,7 @@ class ServerActivity : AppCompatActivity() {
                     serverSocket = ServerSocket(serverPort)
                     Log.d("ServerActivity", "Servidor iniciado en el puerto: $serverPort")
 
-                    while (!serverThread!!.isInterrupted) {
+                    while (!serverThread.isInterrupted) {
                         val clientSocket = serverSocket?.accept()
                         Log.d("ServerActivity", "Cliente conectado: ${clientSocket?.inetAddress}")
                         CoroutineScope(Dispatchers.IO).launch {
@@ -162,18 +172,18 @@ class ServerActivity : AppCompatActivity() {
                     Log.e("ServerActivity", "Error del servidor", e)
                 }
             }
-            serverThread!!.start()
+            serverThread.start()
         }
     }
 
     private fun stopServer() {
         try {
             serverSocket?.close()
-            serverThread?.interrupt()
-            serverSocket = null
-            serverThread = null
+            serverThread.interrupt()
         } catch (e: IOException) {
             Log.e("ServerActivity", "Error al cerrar el servidor", e)
+        } catch (e: UninitializedPropertyAccessException) {
+            Log.e("ServerActivity", "Server thread was not initialized", e)
         }
     }
 
@@ -194,30 +204,38 @@ class ServerActivity : AppCompatActivity() {
             try {
                 it.getInputStream().use { inputStream ->
                     val clientIpBuffer = ByteArray(1024)
+                    Log.d("clientIpBuffer", "clientIpBuffer) $clientIpBuffer")
                     val clientIpLength = inputStream.read(clientIpBuffer)
-                    val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
+                    Log.d("clientIpBuffer", "clientIpLength ) $clientIpLength")
 
-                    Log.d("ServerActivity", "Received connection from client IP: $clientIp")
+                    if (clientIpLength > 0) {
+                        val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
+                        Log.d("ServerActivity", "Received connection from client IP: $clientIp")
 
-                    val byteArrayOutputStream = ByteArrayOutputStream()
-                    val buffer = ByteArray(1024)
-                    var bytesRead: Int
+                        val byteArrayOutputStream = ByteArrayOutputStream()
+                        val buffer = ByteArray(1024)
+                        var bytesRead: Int
 
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        byteArrayOutputStream.write(buffer, 0, bytesRead)
-                    }
-
-                    val byteArray = byteArrayOutputStream.toByteArray()
-                    val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-
-                    if (bitmap != null) {
-                        clientImages[clientIp] = bitmap
-                        runOnUiThread {
-                            updateImageViews()
+                        while (true) {
+                            bytesRead = inputStream.read(buffer)
+                            if (bytesRead == -1) break
+                            byteArrayOutputStream.write(buffer, 0, bytesRead)
                         }
-                    }
 
-                    viewModel.clientData.postValue("Connected to client IP: $clientIp")
+                        val byteArray = byteArrayOutputStream.toByteArray()
+                        val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
+
+                        if (bitmap != null) {
+                            clientImages[clientIp] = bitmap
+                            runOnUiThread {
+                                updateImageViews()
+                            }
+                        }
+
+                        viewModel.clientData.postValue("Connected to client IP: $clientIp")
+                    } else {
+                        Log.e("ServerActivity", "Failed to read client IP")
+                    }
                 }
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Client handling error", e)
