@@ -1,7 +1,6 @@
 package com.example.myapplication
 
 import android.animation.ObjectAnimator
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
@@ -25,78 +24,72 @@ import javax.jmdns.ServiceInfo
 class CloneActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCloneBinding
-    private val serverPort = 5000
-    private var serverSocket: ServerSocket? = null
-    private var serverThread: Thread? = null
+    private val puertoServidor = 5000
+    private var socketServidor: ServerSocket? = null
+    private var hiloServidor: Thread? = null
     private lateinit var jmdns: JmDNS
     private val viewModel: Screen2ViewModel by viewModels()
 
-    private val clientImages = mutableMapOf<String, Bitmap>()
-    private val clientIps = mutableListOf<String>()
-
+    private val imagenesClientes = mutableMapOf<String, Bitmap>()
+    private val ipsClientes = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCloneBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Si no hay un estado guardado previo, iniciar el servidor y anunciar el servicio
         if (savedInstanceState == null) {
-            displayServerInfo()
+            mostrarInfoServidor()
             CoroutineScope(Dispatchers.Main).launch {
-                startServer()
+                iniciarServidor()
             }
-            advertiseService()
+            anunciarServicio()
         } else {
-            restoreImages(savedInstanceState)
+            restaurarImagenes(savedInstanceState)
         }
 
+        // Configurar acciones de clic para las imágenes recibidas
         binding.receivedImageView1.setOnClickListener {
-            clientIps.getOrNull(0)?.let { clientIp ->
-                // Cambiar el tamaño de receivedImageView1 a 1200dp de altura y 400dp de ancho
+            ipsClientes.getOrNull(0)?.let {
                 val layoutParams = binding.receivedImageView1.layoutParams
                 layoutParams.height = 1200
                 layoutParams.width = 800
                 binding.receivedImageView1.layoutParams = layoutParams
-
-                // Ocultar receivedImageView2 si es necesario
                 binding.receivedImageView2.visibility = View.GONE
 
-                // Mover receivedImageView1 hacia arriba 600 píxeles con animación
-                val moveUpAnimation = ObjectAnimator.ofFloat(
-                    binding.receivedImageView2,
+                val moverAnimacion = ObjectAnimator.ofFloat(
+                    binding.receivedImageView1,
                     "translationY",
-                    -600f
+                    -0f
                 )
-                moveUpAnimation.duration = 500 // Duración de la animación en milisegundos
-                moveUpAnimation.interpolator = AccelerateInterpolator()
-                moveUpAnimation.start()
+                moverAnimacion.duration = 500
+                moverAnimacion.interpolator = AccelerateInterpolator()
+                moverAnimacion.start()
             }
         }
 
-
         binding.receivedImageView2.setOnClickListener {
-            clientIps.getOrNull(0)?.let { clientIp ->
-                // Cambiar el tamaño de receivedImageView1 a 1200dp de altura y 400dp de ancho
+            ipsClientes.getOrNull(0)?.let {
                 val layoutParams = binding.receivedImageView2.layoutParams
                 layoutParams.height = 1200
                 layoutParams.width = 800
                 binding.receivedImageView2.layoutParams = layoutParams
-
-                // Ocultar receivedImageView1 si es necesario
                 binding.receivedImageView1.visibility = View.GONE
 
-                // Mover receivedImageView1 hacia arriba 600 píxeles con animación
-                val moveUpAnimation = ObjectAnimator.ofFloat(
+                val moverAnimacion = ObjectAnimator.ofFloat(
                     binding.receivedImageView2,
                     "translationY",
-                    -0f
+                    0f
                 )
-                moveUpAnimation.duration = 500 // Duración de la animación en milisegundos
-                moveUpAnimation.interpolator = AccelerateInterpolator()
-                moveUpAnimation.start()
+                moverAnimacion.duration = 500
+                moverAnimacion.interpolator = AccelerateInterpolator()
+                moverAnimacion.start()
             }
         }
-    }    private fun restoreImages(savedInstanceState: Bundle) {
+    }
+
+    private fun restaurarImagenes(savedInstanceState: Bundle) {
         savedInstanceState.getString("client1ImagePath")?.let { path ->
             openFileInput(path).use {
                 val bitmap = BitmapFactory.decodeStream(it)
@@ -109,13 +102,6 @@ class CloneActivity : AppCompatActivity() {
                 binding.receivedImageView2.setImageBitmap(bitmap)
             }
         }
-    }
-
-    private fun openCloneActivity(clientIp: String) {
-        stopServer()
-        val intent = Intent(this, ActivityImageDetail::class.java)
-        intent.putExtra("CLIENT_IP", clientIp)
-        startActivity(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -141,20 +127,20 @@ class CloneActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopServer()
+        detenerServidor()
     }
 
-    private fun displayServerInfo() {
-        val ipAddress = getLocalIpAddress()
-        if (ipAddress != null) {
-            val serverInfo = "Server IP: $ipAddress\nPort: $serverPort"
-            binding.serverInfoTextView.text = serverInfo
+    private fun mostrarInfoServidor() {
+        val direccionIp = obtenerDireccionIpLocal()
+        if (direccionIp != null) {
+            val infoServidor = "Server IP: $direccionIp\nPort: $puertoServidor"
+            binding.serverInfoTextView.text = infoServidor
         } else {
             binding.serverInfoTextView.text = "Failed to get IP address"
         }
     }
 
-    private fun getLocalIpAddress(): String? {
+    private fun obtenerDireccionIpLocal(): String? {
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {
@@ -173,76 +159,86 @@ class CloneActivity : AppCompatActivity() {
         return null
     }
 
-    private suspend fun isPortInUse(port: Int): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun isPuertoEnUso(puerto: Int): Boolean = withContext(Dispatchers.IO) {
+        // Intenta conectarse al puerto especificado para verificar si está en uso
         return@withContext try {
-            val socket = Socket("localhost", port)
-            socket.close()
-            true
+            val socket = Socket("localhost", puerto)
+            socket.close()  // Cierra el socket si la conexión fue exitosa
+            true  // Devuelve true si el puerto está en uso
         } catch (e: IOException) {
-            false
+            false  // Devuelve false si el puerto no está en uso
         }
     }
 
-    private suspend fun startServer() {
+    private suspend fun iniciarServidor() {
         withContext(Dispatchers.IO) {
-            stopServer()
+            detenerServidor()  // Detiene el servidor si está en funcionamiento
         }
 
-        if (isPortInUse(serverPort)) {
-            connectToExistingServer()
+        if (isPuertoEnUso(puertoServidor)) {
+            conectarAServidorExistente()  // Conecta a un servidor existente si el puerto está en uso
             return
         }
 
         withContext(Dispatchers.IO) {
-            serverThread = Thread {
+            // Inicia un hilo para manejar las conexiones del servidor
+            hiloServidor = Thread {
                 try {
-                    serverSocket = ServerSocket(serverPort)
-                    while (!serverThread!!.isInterrupted) {
-                        val clientSocket = serverSocket?.accept()
+                    // Crea un ServerSocket para escuchar conexiones en el puerto especificado
+                    socketServidor = ServerSocket(puertoServidor)
+                    while (!hiloServidor!!.isInterrupted) {
+                        // Acepta una conexión de cliente
+                        val socketCliente = socketServidor?.accept()
+                        // Maneja la conexión del cliente en una nueva coroutine
                         CoroutineScope(Dispatchers.IO).launch {
-                            handleClient(clientSocket)
+                            manejarCliente(socketCliente)
                         }
                     }
                 } catch (e: IOException) {
-                    Log.e("CloneActivity", "Server error", e)
+                    Log.e("CloneActivity", "Server error", e)  // Registra cualquier error del servidor
                 }
             }
-            serverThread?.start()
+            hiloServidor?.start()  // Inicia el hilo del servidor
         }
     }
 
-    private fun stopServer() {
+    private fun detenerServidor() {
         try {
-            serverSocket?.close()
-            serverThread?.interrupt()
-            serverSocket = null
-            serverThread = null
+            // Cierra el socket del servidor y detiene el hilo del servidor
+            socketServidor?.close()
+            hiloServidor?.interrupt()
+            socketServidor = null
+            hiloServidor = null
         } catch (e: IOException) {
-            Log.e("CloneActivity", "Error closing server", e)
+            Log.e("CloneActivity", "Error closing server", e)  // Registra cualquier error al cerrar el servidor
         }
     }
 
-    private fun connectToExistingServer() {
+    private fun conectarAServidorExistente() {
+        // Intenta conectar a un servidor existente en una nueva coroutine
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val socket = Socket("localhost", serverPort)
-                handleClient(socket)
+                val socket = Socket("localhost", puertoServidor)  // Crea un socket para conectarse al servidor existente
+                manejarCliente(socket)  // Maneja la conexión del cliente
             } catch (e: IOException) {
-                Log.e("CloneActivity", "Error connecting to existing server", e)
+                Log.e("CloneActivity", "Error connecting to existing server", e)  // Registra cualquier error al conectar al servidor existente
             }
         }
     }
 
-    private fun handleClient(socket: Socket?) {
+    private fun manejarCliente(socket: Socket?) {
+        // Usa el socket para manejar la conexión del cliente
         socket?.use {
             try {
                 it.getInputStream().use { inputStream ->
-                    val clientIpBuffer = ByteArray(1024)
-                    val clientIpLength = inputStream.read(clientIpBuffer)
-                    val clientIp = String(clientIpBuffer, 0, clientIpLength).trim()
+                    // Lee la IP del cliente desde el flujo de entrada
+                    val bufferIpCliente = ByteArray(1024)
+                    val longitudIpCliente = inputStream.read(bufferIpCliente)
+                    val ipCliente = String(bufferIpCliente, 0, longitudIpCliente).trim()
 
-                    Log.d("CloneActivity", "Received connection from client IP: $clientIp")
+                    Log.d("CloneActivity", "Received connection from client IP: $ipCliente")  // Registra la IP del cliente conectado
 
+                    // Lee los datos de imagen desde el flujo de entrada
                     val byteArrayOutputStream = ByteArrayOutputStream()
                     val buffer = ByteArray(1024)
                     var bytesRead: Int
@@ -251,41 +247,43 @@ class CloneActivity : AppCompatActivity() {
                         byteArrayOutputStream.write(buffer, 0, bytesRead)
                     }
 
+                    // Convierte los datos de imagen en un bitmap
                     val byteArray = byteArrayOutputStream.toByteArray()
                     val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 
+                    // Si se pudo decodificar el bitmap, lo guarda y actualiza la interfaz de usuario
                     if (bitmap != null) {
-                        clientImages[clientIp] = bitmap
-                        if (!clientIps.contains(clientIp)) {
-                            clientIps.add(clientIp)
+                        imagenesClientes[ipCliente] = bitmap
+                        if (!ipsClientes.contains(ipCliente)) {
+                            ipsClientes.add(ipCliente)
                         }
                         runOnUiThread {
-                            updateImageViews()
+                            actualizarVistasImagenes()
                         }
                     }
 
-                    viewModel.clientData.postValue("Connected to client IP: $clientIp")
+                    // Actualiza el ViewModel con la IP del cliente conectado
+                    viewModel.datosCliente.postValue("Connected to client IP: $ipCliente")
                 }
             } catch (e: IOException) {
-                Log.e("CloneActivity", "Client handling error", e)
+                Log.e("CloneActivity", "Client handling error", e)  // Registra cualquier error al manejar el cliente
             }
         }
     }
-
-    private fun updateImageViews() {
-        if (clientIps.size > 0) {
-            binding.receivedImageView1.setImageBitmap(clientImages[clientIps[0]])
+    private fun actualizarVistasImagenes() {
+        if (ipsClientes.size > 0) {
+            binding.receivedImageView1.setImageBitmap(imagenesClientes[ipsClientes[0]])
         }
-        if (clientIps.size > 1) {
-            binding.receivedImageView2.setImageBitmap(clientImages[clientIps[1]])
+        if (ipsClientes.size > 1) {
+            binding.receivedImageView2.setImageBitmap(imagenesClientes[ipsClientes[1]])
         }
     }
 
-    private fun advertiseService() {
+    private fun anunciarServicio() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 jmdns = JmDNS.create()
-                val serviceInfo = ServiceInfo.create("_http._tcp.local.", "ScreenServer", serverPort, "Screen Sharing Server")
+                val serviceInfo = ServiceInfo.create("_http._tcp.local.", "ScreenServer", puertoServidor, "Screen Sharing Server")
                 jmdns.registerService(serviceInfo)
             } catch (e: IOException) {
                 Log.e("CloneActivity", "Error advertising service", e)

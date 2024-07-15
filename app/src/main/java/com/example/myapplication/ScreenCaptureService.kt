@@ -18,42 +18,42 @@ class ScreenCaptureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
-            val notification: Notification
+            val notificacion: Notification
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channelId = createNotificationChannel()
-                notification = NotificationCompat.Builder(this, channelId)
-                    .setContentTitle("Screen Capture")
-                    .setContentText("Capturing screen...")
-                    .setSmallIcon(R.drawable.ic_notification) // Ensure you have this icon in your project
+                val idCanal = crearCanalNotificacion()
+                notificacion = NotificationCompat.Builder(this, idCanal)
+                    .setContentTitle("Captura de Pantalla")
+                    .setContentText("Capturando pantalla...")
+                    .setSmallIcon(R.drawable.ic_notification) // Asegúrate de tener este icono en tu proyecto
                     .build()
 
-                // Start the service as a foreground service with the MEDIA_PROJECTION type
+                // Inicia el servicio como un servicio en primer plano con el tipo MEDIA_PROJECTION
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+                    startForeground(1, notificacion, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
                 } else {
-                    startForeground(1, notification)
+                    startForeground(1, notificacion)
                 }
             } else {
-                notification = NotificationCompat.Builder(this)
-                    .setContentTitle("Screen Capture")
-                    .setContentText("Capturing screen...")
-                    .setSmallIcon(R.drawable.ic_notification) // Ensure you have this icon in your project
+                notificacion = NotificationCompat.Builder(this)
+                    .setContentTitle("Captura de Pantalla")
+                    .setContentText("Capturando pantalla...")
+                    .setSmallIcon(R.drawable.ic_notification) // Asegúrate de tener este icono en tu proyecto
                     .build()
-                startForeground(1, notification)
+                startForeground(1, notificacion)
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun createNotificationChannel(): String {
+    private fun crearCanalNotificacion(): String {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "screen_capture"
-            val channelName = "Screen Capture"
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
-            channel.description = "Channel for screen capture notification"
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-            return channelId
+            val idCanal = "captura_pantalla"
+            val nombreCanal = "Captura de Pantalla"
+            val canal = NotificationChannel(idCanal, nombreCanal, NotificationManager.IMPORTANCE_LOW)
+            canal.description = "Canal para la notificación de captura de pantalla"
+            val administradorNotificaciones = getSystemService(NotificationManager::class.java)
+            administradorNotificaciones.createNotificationChannel(canal)
+            return idCanal
         }
         return ""
     }

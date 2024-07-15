@@ -4,9 +4,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
 class Screen2ViewModel : ViewModel() {
-    val clientData = MutableLiveData<String>()
+    val datosCliente = MutableLiveData<String>()
 
     fun updateClientData(data: String) {
-        clientData.postValue(data)
+        datosCliente.postValue(data)
     }
 }

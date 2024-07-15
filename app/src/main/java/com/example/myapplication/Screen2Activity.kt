@@ -25,25 +25,24 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.Socket
-import java.nio.ByteBuffer
 
 class Screen2Activity : AppCompatActivity() {
 
     private lateinit var binding: ActivityScreen2Binding
-    private lateinit var mediaProjectionManager: MediaProjectionManager
-    private var mediaProjection: MediaProjection? = null
-    private var virtualDisplay: VirtualDisplay? = null
-    private lateinit var imageReader: ImageReader
+    private lateinit var administradorProyeccionMedia: MediaProjectionManager
+    private var proyeccionMedia: MediaProjection? = null
+    private var pantallaVirtual: VirtualDisplay? = null
+    private lateinit var lectorImagen: ImageReader
     private val viewModel: Screen2ViewModel by viewModels()
 
     companion object {
-        private const val REQUEST_CODE_CAPTURE = 1001
-        private const val TAG = "Screen2Activity"
-        private const val SERVER_IP = "192.168.24.68"
-        private const val SERVER_PORT = 5000
+        private const val CODIGO_SOLICITUD_CAPTURA = 1001
+        private const val TAG = "ActividadPantalla2"
+        private const val IP_SERVIDOR = "192.168.24.68"
+        private const val PUERTO_SERVIDOR = 5000
     }
 
-    private lateinit var metrics: DisplayMetrics
+    private lateinit var metricas: DisplayMetrics
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,151 +50,179 @@ class Screen2Activity : AppCompatActivity() {
         setContentView(binding.root)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        administradorProyeccionMedia = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        metrics = DisplayMetrics()
-        windowManager.defaultDisplay.getMetrics(metrics)
+        metricas = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(metricas)
 
-        binding.startServerButton.setOnClickListener {
-            startServer()
+        binding.botonIniciarServidor.setOnClickListener {
+            iniciarServidor()
         }
 
-        binding.startClientButton.setOnClickListener {
-            startClient()
+        binding.botonIniciarCliente.setOnClickListener {
+            iniciarCliente()
         }
 
-        // Observe ViewModel data
-        viewModel.clientData.observe(this) { data ->
-            binding.clientDataTextView.text = data
+        // Observar datos del ViewModel
+        viewModel.datosCliente.observe(this) { datos ->
+            binding.textoDatosCliente.text = datos
         }
     }
-    private fun startServer() {
+
+    private fun iniciarServidor() {
         val intent = Intent(this, CloneActivity::class.java)
-        openCloneActivity()
+        abrirActividadClon()
     }
 
-    private fun startClient() {
-        val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
+    private fun iniciarCliente() {
+        // Crear un intent para capturar la pantalla
+        val intentCaptura = administradorProyeccionMedia.createScreenCaptureIntent()
 
-        // Start ScreenCaptureService as a foreground service
-        val serviceIntent = Intent(this, ScreenCaptureService::class.java)
+        // Crear un intent para iniciar el servicio de captura de pantalla
+        val intentServicio = Intent(this, ScreenCaptureService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
+            // Iniciar el servicio en primer plano si el SDK es O (Oreo) o superior
+            startForegroundService(intentServicio)
         } else {
-            startService(serviceIntent)
+            // Iniciar el servicio en segundo plano si el SDK es menor que O
+            startService(intentServicio)
         }
 
-        startActivityForResult(captureIntent, REQUEST_CODE_CAPTURE)
+        // Iniciar la actividad para la captura de pantalla y esperar un resultado
+        startActivityForResult(intentCaptura, CODIGO_SOLICITUD_CAPTURA)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE_CAPTURE && resultCode == RESULT_OK) {
+        if (requestCode == CODIGO_SOLICITUD_CAPTURA && resultCode == RESULT_OK) {
+            // Verificar que el resultado sea exitoso y que los datos no sean nulos
             data?.let {
-                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, it)
-                setupVirtualDisplay()
+                // Obtener la proyección de medios usando el resultado de la actividad
+                proyeccionMedia = administradorProyeccionMedia.getMediaProjection(resultCode, it)
+                // Configurar la pantalla virtual para la captura de pantalla
+                configurarPantallaVirtual()
             }
         }
     }
-    private fun openCloneActivity() {
+
+    private fun abrirActividadClon() {
         val intent = Intent(this, CloneActivity::class.java)
         startActivity(intent)
     }
-    private fun setupVirtualDisplay() {
-        imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
 
-        virtualDisplay = mediaProjection?.createVirtualDisplay(
-            "ScreenCapture",
-            metrics.widthPixels, metrics.heightPixels, metrics.densityDpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader.surface, null, null
+    private fun configurarPantallaVirtual() {
+        // Crear un lector de imágenes para capturar la pantalla
+        lectorImagen = ImageReader.newInstance(metricas.widthPixels, metricas.heightPixels, PixelFormat.RGBA_8888, 2)
+
+        // Crear una pantalla virtual para la captura de pantalla
+        pantallaVirtual = proyeccionMedia?.createVirtualDisplay(
+            "CapturaPantalla",  // Nombre de la pantalla virtual
+            metricas.widthPixels,  // Ancho de la pantalla
+            metricas.heightPixels,  // Alto de la pantalla
+            metricas.densityDpi,  // Densidad de la pantalla
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,  // Bandera para el modo espejo
+            lectorImagen.surface,  // Superficie del lector de imágenes
+            null,  // Callback (no se usa aquí)
+            null   // Handler (no se usa aquí)
         )
 
+        // Usar una corrutina para capturar y enviar la pantalla periódicamente
         CoroutineScope(Dispatchers.IO).launch {
             while (true) {
-                mediaProjection?.let {
-                    val screenshot = captureScreen()
-                    if (screenshot != null) {
-                        // Compress bitmap into byte array
-                        val byteArrayOutputStream = ByteArrayOutputStream()
-                        screenshot.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
-                        val byteArray = byteArrayOutputStream.toByteArray()
+                proyeccionMedia?.let {
+                    // Capturar la pantalla y obtener un bitmap
+                    val capturaPantalla = capturarPantalla()
+                    if (capturaPantalla != null) {
+                        // Comprimir el bitmap en un array de bytes
+                        val outputStreamArrayBytes = ByteArrayOutputStream()
+                        capturaPantalla.compress(Bitmap.CompressFormat.JPEG, 50, outputStreamArrayBytes)
+                        val arrayBytes = outputStreamArrayBytes.toByteArray()
 
-                        // Send data to server
-                        sendBytesToIp(SERVER_IP, SERVER_PORT, byteArray)
+                        // Enviar los datos de imagen al servidor
+                        enviarBytesAIP(IP_SERVIDOR, PUERTO_SERVIDOR, arrayBytes)
 
-                        // Update UI with server info
-                        updateUiWithServerInfo(SERVER_IP, SERVER_PORT)
+                        // Actualizar la interfaz de usuario con la información del servidor
+                        actualizarUIConInfoServidor(IP_SERVIDOR, PUERTO_SERVIDOR)
                     }
                 }
-                delay(100) // Adjust delay as needed to control sending frequency
+                // Esperar 100 ms antes de la próxima captura
+                delay(100)
             }
         }
     }
 
-    private fun captureScreen(): Bitmap? {
-        val image = imageReader.acquireLatestImage()
-        if (image != null) {
-            val planes = image.planes
-            val buffer = planes[0].buffer
-            val pixelStride = planes[0].pixelStride
-            val rowStride = planes[0].rowStride
-            val rowPadding = rowStride - pixelStride * metrics.widthPixels
+    private fun capturarPantalla(): Bitmap? {
+        // Adquirir la última imagen capturada por el lector de imágenes
+        val imagen = lectorImagen.acquireLatestImage()
+        if (imagen != null) {
+            val planos = imagen.planes
+            val buffer = planos[0].buffer
+            val pixelStride = planos[0].pixelStride
+            val rowStride = planos[0].rowStride
+            val rowPadding = rowStride - pixelStride * metricas.widthPixels
 
+            // Crear un bitmap a partir del buffer de la imagen
             val bitmap = Bitmap.createBitmap(
-                metrics.widthPixels + rowPadding / pixelStride,
-                metrics.heightPixels, Bitmap.Config.ARGB_8888
+                metricas.widthPixels + rowPadding / pixelStride,  // Ancho ajustado
+                metricas.heightPixels,  // Altura
+                Bitmap.Config.ARGB_8888  // Configuración de pixel
             )
-            bitmap.copyPixelsFromBuffer(buffer)
-            image.close()
-            return bitmap
+            bitmap.copyPixelsFromBuffer(buffer)  // Copiar los píxeles del buffer al bitmap
+            imagen.close()  // Cerrar la imagen para liberar recursos
+            return bitmap  // Devolver el bitmap creado
         }
-        return null
+        return null  // Devolver null si no se pudo adquirir la imagen
     }
 
     @SuppressLint("ServiceCast")
-    private fun getLocalIpAddress(): String {
+    private fun obtenerDireccionIpLocal(): String {
+        // Obtener el servicio de WiFi del sistema
         val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
-        val ipAddress = wifiManager.connectionInfo.ipAddress
+        // Obtener la dirección IP del dispositivo
+        val direccionIp = wifiManager.connectionInfo.ipAddress
+        // Convertir la dirección IP a formato de string
         return String.format(
             "%d.%d.%d.%d",
-            ipAddress and 0xff,
-            ipAddress shr 8 and 0xff,
-            ipAddress shr 16 and 0xff,
-            ipAddress shr 24 and 0xff
+            direccionIp and 0xff,
+            direccionIp shr 8 and 0xff,
+            direccionIp shr 16 and 0xff,
+            direccionIp shr 24 and 0xff
         )
     }
 
-    private fun sendBytesToIp(ip: String, port: Int, data: ByteArray) {
+    private fun enviarBytesAIP(ip: String, puerto: Int, datos: ByteArray) {
         try {
-            Socket(ip, port).use { socket ->
+            // Crear un socket para conectarse al servidor
+            Socket(ip, puerto).use { socket ->
                 socket.getOutputStream().use { outputStream ->
-                    // Get client's local IP
-                    val clientIp = getLocalIpAddress()
-                    if (clientIp != null) {
-                        // Send client's IP first
-                        outputStream.write((clientIp + "\n").toByteArray())
+                    // Obtener la IP local del cliente
+                    val ipCliente = obtenerDireccionIpLocal()
+                    if (ipCliente != null) {
+                        // Enviar la IP del cliente primero
+                        outputStream.write((ipCliente + "\n").toByteArray())
                     }
-                    // Send image data
-                    outputStream.write(data)
-                    outputStream.flush()
+                    // Enviar los datos de la imagen
+                    outputStream.write(datos)
+                    outputStream.flush()  // Asegurar que todos los datos se envíen
                 }
             }
         } catch (e: IOException) {
-            Log.e(TAG, "Failed to send bytes to IP $ip on port $port", e)
+            // Registrar un error si la conexión falla
+            Log.e(TAG, "No se pudo enviar bytes a IP $ip en el puerto $puerto", e)
         }
     }
 
-    private fun updateUiWithServerInfo(ip: String, port: Int) {
+    private fun actualizarUIConInfoServidor(ip: String, puerto: Int) {
+        // Actualizar la interfaz de usuario con información sobre el servidor
         runOnUiThread {
-            binding.serverInfoTextView.text = "Sending data to server IP: $ip, Port: $port"
+            binding.textoInfoServidor.text = "Enviando datos al servidor IP: $ip, Puerto: $puerto"
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaProjection?.stop()
-        virtualDisplay?.release()
-        imageReader.close()
+        proyeccionMedia?.stop()
+        pantallaVirtual?.release()
+        lectorImagen.close()
     }
 }
