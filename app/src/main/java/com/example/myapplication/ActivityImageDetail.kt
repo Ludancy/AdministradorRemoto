@@ -50,19 +50,14 @@ class ActivityImageDetail : AppCompatActivity() {
                 val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
                 binding.receivedImageView1.setImageBitmap(bitmap)
             }
-            savedInstanceState.getByteArray("client2Image")?.let {
-                val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                binding.receivedImageView2.setImageBitmap(bitmap)
-            }
+
         }
 
         binding.receivedImageView1.setOnClickListener {
             openCloneActivity()
         }
 
-        binding.receivedImageView2.setOnClickListener {
-            openCloneActivity()
-        }
+
     }
 
     private fun openCloneActivity() {
@@ -81,12 +76,7 @@ class ActivityImageDetail : AppCompatActivity() {
             outState.putByteArray("client1Image", byteArray)
         }
 
-        (binding.receivedImageView2.drawable as BitmapDrawable?)?.bitmap?.let { bitmap ->
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            outState.putByteArray("client2Image", byteArray)
-        }
+
     }
 
     override fun onDestroy() {
@@ -230,9 +220,7 @@ class ActivityImageDetail : AppCompatActivity() {
         if (clientIps.size > 0) {
             binding.receivedImageView1.setImageBitmap(clientImages[clientIps[0]])
         }
-        if (clientIps.size > 1) {
-            binding.receivedImageView2.setImageBitmap(clientImages[clientIps[1]])
-        }
+
     }
 
     private fun advertiseService() {

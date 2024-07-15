@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ServerActivity">
+    tools:context=".ActivityImageDetail">
 
     <TextView
         android:id="@+id/serverInfoTextView"
@@ -14,31 +14,13 @@
 
     <ImageButton
         android:id="@+id/receivedImageView1"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
+        android:layout_width="350dp"
+        android:layout_height="600dp"
         android:layout_below="@id/serverInfoTextView"
         android:layout_marginTop="20dp"
-        android:layout_marginRight="10dp"
+        android:layout_marginRight="20dp"
         android:onClick="onImageClick1" />
 
-    <ImageButton
-        android:id="@+id/receivedImageView2"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:layout_below="@id/serverInfoTextView"
-        android:layout_toRightOf="@id/receivedImageView1"
-        android:layout_marginTop="20dp"
-        android:layout_marginLeft="10dp"
-        android:onClick="onImageClick2" />
 
-
-    <TextView
-        android:id="@+id/clientInfoTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/receivedImageView2"
-        android:layout_marginTop="20dp"
-        android:text="Client Info"
-        android:textSize="20sp" />
 
 </RelativeLayout>
