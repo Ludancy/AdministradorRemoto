@@ -29,6 +29,7 @@ class ActivityImageDetail : AppCompatActivity() {
     private val viewModel: Screen2ViewModel by viewModels()
 
     private val clientImages = mutableMapOf<String, Bitmap>()
+    private var isClientConnected = false  // Flag para rastrear la conexión activa
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -181,6 +182,14 @@ class ActivityImageDetail : AppCompatActivity() {
 
     private fun handleClient(socket: Socket?) {
         socket?.use {
+            if (isClientConnected) {
+                Log.d("ServerActivity", "Ya hay un cliente conectado. Cerrando la nueva conexión.")
+                it.close()
+                return
+            }
+
+            isClientConnected = true  // Marcar que hay una conexión activa
+
             try {
                 it.getInputStream().use { inputStream ->
                     val clientIpBuffer = ByteArray(1024)
@@ -211,6 +220,8 @@ class ActivityImageDetail : AppCompatActivity() {
                 }
             } catch (e: IOException) {
                 Log.e("ServerActivity", "Client handling error", e)
+            } finally {
+                isClientConnected = false  // Liberar la conexión activa al finalizar
             }
         }
     }
