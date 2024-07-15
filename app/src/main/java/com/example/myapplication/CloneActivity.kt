@@ -1,11 +1,14 @@
 package com.example.myapplication
 
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.animation.AccelerateInterpolator
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication.databinding.ActivityCloneBinding
@@ -31,6 +34,7 @@ class CloneActivity : AppCompatActivity() {
     private val clientImages = mutableMapOf<String, Bitmap>()
     private val clientIps = mutableListOf<String>()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCloneBinding.inflate(layoutInflater)
@@ -48,18 +52,51 @@ class CloneActivity : AppCompatActivity() {
 
         binding.receivedImageView1.setOnClickListener {
             clientIps.getOrNull(0)?.let { clientIp ->
-                openCloneActivity(clientIp)
+                // Cambiar el tamaño de receivedImageView1 a 1200dp de altura y 400dp de ancho
+                val layoutParams = binding.receivedImageView1.layoutParams
+                layoutParams.height = 1200
+                layoutParams.width = 800
+                binding.receivedImageView1.layoutParams = layoutParams
+
+                // Ocultar receivedImageView2 si es necesario
+                binding.receivedImageView2.visibility = View.GONE
+
+                // Mover receivedImageView1 hacia arriba 600 píxeles con animación
+                val moveUpAnimation = ObjectAnimator.ofFloat(
+                    binding.receivedImageView2,
+                    "translationY",
+                    -600f
+                )
+                moveUpAnimation.duration = 500 // Duración de la animación en milisegundos
+                moveUpAnimation.interpolator = AccelerateInterpolator()
+                moveUpAnimation.start()
             }
         }
+
 
         binding.receivedImageView2.setOnClickListener {
-            clientIps.getOrNull(1)?.let { clientIp ->
-                openCloneActivity(clientIp)
+            clientIps.getOrNull(0)?.let { clientIp ->
+                // Cambiar el tamaño de receivedImageView1 a 1200dp de altura y 400dp de ancho
+                val layoutParams = binding.receivedImageView2.layoutParams
+                layoutParams.height = 1200
+                layoutParams.width = 800
+                binding.receivedImageView2.layoutParams = layoutParams
+
+                // Ocultar receivedImageView1 si es necesario
+                binding.receivedImageView1.visibility = View.GONE
+
+                // Mover receivedImageView1 hacia arriba 600 píxeles con animación
+                val moveUpAnimation = ObjectAnimator.ofFloat(
+                    binding.receivedImageView2,
+                    "translationY",
+                    -0f
+                )
+                moveUpAnimation.duration = 500 // Duración de la animación en milisegundos
+                moveUpAnimation.interpolator = AccelerateInterpolator()
+                moveUpAnimation.start()
             }
         }
-    }
-
-    private fun restoreImages(savedInstanceState: Bundle) {
+    }    private fun restoreImages(savedInstanceState: Bundle) {
         savedInstanceState.getString("client1ImagePath")?.let { path ->
             openFileInput(path).use {
                 val bitmap = BitmapFactory.decodeStream(it)
