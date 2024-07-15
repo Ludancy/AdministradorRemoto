@@ -8,7 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import com.example.myapplication.databinding.ActivityServerBinding
+import com.example.myapplication.databinding.ActivityImageDetailBinding
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -21,7 +21,7 @@ import javax.jmdns.ServiceInfo
 
 class ServerActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityServerBinding
+    private lateinit var binding: ActivityImageDetailBinding
     private val serverPort = 5000
     private var serverSocket: ServerSocket? = null
     private var serverThread: Thread? = null
@@ -32,7 +32,7 @@ class ServerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityServerBinding.inflate(layoutInflater)
+        binding = ActivityImageDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         if (savedInstanceState == null) {
